@@ -45,7 +45,7 @@ function subscribeMonth(m) {
   unsubs.forEach(u => u()); unsubs = []; curMonth = m; S.ents = []; S.secs = {};
   const t = setTimeout(() => { if (!S.ready) { S.err = 'المعلومات ما وصلاتش بعد. تأكد من الأنترنيت.'; render(); } }, 10000);
   unsubs.push(S.db.collection('m/' + m + '/e').onSnapshot(q => { clearTimeout(t); S.ready = true; S.err = ''; S.ents = q.docs.map(x => Object.assign({ id: x.id }, x.data())); render(); }, e => { S.err = 'خطأ فالقراءة: ' + e.code; render(); }));
-  unsubs.push(S.db.collection('m/' + m + '/s').onSnapshot(q => { const o = {}; q.docs.forEach(x => o[x.id] = x.data()); S.secs = o; render(); }, () => {}));
+  unsubs.push(S.db.collection('m/' + m + '/s').onSnapshot(q => { const o = {}; q.docs.forEach(x => o[x.id] = fixEx(x.data())); S.secs = o; render(); }, () => {}));
   loadHist();
 }
 async function loadHist() {
@@ -388,6 +388,7 @@ function archive(m) {
 const GRP = [[15, 32, 'Atteintes à la personne', 'الجرائم المرتبطة بالأشخاص'], [33, 37, 'Atteintes à la famille', 'الجرائم المرتبطة بالأسرة'], [38, 48, 'Atteintes aux mœurs', 'الجرائم المرتبطة بالأخلاق العامة'], [49, 70, 'Atteintes aux biens', 'الجرائم المرتبطة بالممتلكات'], [71, 78, "Atteintes à l'autorité", 'الجرائم المرتبطة بالسلطة'], [79, 86, "Atteintes à l'ordre public", 'الجرائم المرتبطة بالنظام العام'], [87, 91, "Sûreté de l'État", 'الجرائم المرتبطة بأمن الدولة'], [92, 99, 'Trafic de stupéfiants', 'الجرائم المرتبطة بالمخدرات'], [100, 149, 'Autres infractions', 'جرائم أخرى']];
 const SZR = [['Cannabis (chira, kif, tabac)', 'غ'], ['Cocaïne', 'غ'], ['Héroïne', 'غ'], ['Comprimés psychotropes', 'وحدة'], ['Armes blanches', 'وحدة'], ['Bombes lacrymogènes', 'وحدة'], ['Gourdins', 'وحدة'], ['Médicaments', 'علبة'], ['Cigarettes', 'علبة'], ['Boissons alcoolisées', 'وحدة'], ['Carburants', 'لتر'], ['Téléphones', 'وحدة'], ['Véhicules', 'وحدة'], ['Motocycles', 'وحدة'], ['Narguilé', 'وحدة'], ['Produits de dissolution', 'وحدة']];
 const MOISC = ['يناير', 'فبراير', 'مارس', 'أبريل', 'ماي', 'يونيو', 'يوليوز', 'غشت', 'شتنبر', 'أكتوبر', 'نونبر', 'دجنبر'];
+function fixEx(o) { const ex = o && o.exam; if (ex && (ex.a1 != null || ex.a2 != null)) ex.sp = num(ex.a1) + num(ex.a2); return o; }
 function secSum(secs, days, path) { let t = 0; days.forEach(d => { let o = secs[d]; path.split('.').forEach(k => o = o ? o[k] : 0); t += num(o); }); return t; }
 function repApp(ents, secs, m) {
   const days = monthDays(m), A = agg(ents.filter(e => (e.k === 'aff' || e.k === 'bar') && days.includes(e.d)));
@@ -453,7 +454,7 @@ async function loadYear() {
       if (m > cur || have.has(m) || m < '2026-11') continue;
       if (m === cur) { list.push(repApp(S.ents, S.secs, m)); continue; }
       const [qe, qs] = await Promise.all([S.db.collection('m/' + m + '/e').get(), S.db.collection('m/' + m + '/s').get()]);
-      const secs = {}; qs.docs.forEach(x => secs[x.id] = x.data());
+      const secs = {}; qs.docs.forEach(x => secs[x.id] = fixEx(x.data()));
       list.push(repApp(qe.docs.map(x => x.data()), secs, m));
     }
     list.sort((a, b) => a.m < b.m ? -1 : 1);
@@ -596,7 +597,7 @@ function render() {
   if (!S.own && S.tab === 'month') S.tab = 'day';
   $('#tabs').innerHTML = TABS.filter(([k]) => S.own || k !== 'month').map(([k, l]) => '<button type="button" class="' + (S.tab === k ? 'on' : '') + '" data-tab="' + k + '">' + l + '</button>').join('');
   $('#status').textContent = !S.db ? (S.dbTried ? 'ما قدرتش نحل الذاكرة ديال التيليفون. سد التطبيق وعاود حلو.' : 'كنتصل…') : (S.err || (S.ready ? '' : 'كنجيب المعلومات…'));
-  $('#span').textContent = 'v82 · الحصيلة: ' + span(S.date) + (isClosed(S.date) ? ' · مسدودة ✓' : '');
+  $('#span').textContent = 'v83 · الحصيلة: ' + span(S.date) + (isClosed(S.date) ? ' · مسدودة ✓' : '');
   const emptied = isClosed(S.date) && !['day', 'month'].includes(S.tab);
   let html;
   if (emptied) {
@@ -724,7 +725,7 @@ document.addEventListener('change', ev => {
     const path = i.dataset.sec.split('.'), v = i.value === '' ? null : num(i.value), patch = {}; let o = patch;
     path.forEach((k, j) => { if (j === path.length - 1) o[k] = v; else o = o[k] = {}; });
     const cur = S.secs[S.date] = S.secs[S.date] || {}; let c = cur; path.forEach((k, j) => { if (j === path.length - 1) c[k] = v; else c = c[k] = c[k] || {}; });
-    if (path[0] === 'exam' && (path[1] === 'a1' || path[1] === 'a2')) { const ex = cur.exam || {}; const sp = (ex.a1 == null && ex.a2 == null) ? null : num(ex.a1) + num(ex.a2); ex.sp = sp; patch.exam.sp = sp; }
+    if (path[0] === 'exam' && (path[1] === 'a1' || path[1] === 'a2')) { const ex = cur.exam || {}; const g = k => { const el = document.querySelector('[data-sec="exam.' + k + '"]'); return el && el.value !== '' ? num(el.value) : ex[k]; }; ex.a1 = g('a1'); ex.a2 = g('a2'); patch.exam.a1 = ex.a1 == null ? null : ex.a1; patch.exam.a2 = ex.a2 == null ? null : ex.a2; const sp = (ex.a1 == null && ex.a2 == null) ? null : num(ex.a1) + num(ex.a2); ex.sp = sp; patch.exam.sp = sp; }
     saveSec(S.date, patch); return;
   }
   if (i.dataset.init) { const [mi, k] = i.dataset.init.split('.'); S.cfg.init[mi] = S.cfg.init[mi] || {}; S.cfg.init[mi][k] = num(i.value); saveCfg(); return; }
