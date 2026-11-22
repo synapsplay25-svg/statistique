@@ -1,0 +1,3 @@
+Statistique Mensuelle — CC Tiflet — نسخة بلا أنترنيت
+المعطيات كتبقى غير فالتيليفون. هاد الملفات فيهم غير الكود، ما فيهم حتى معطى.
+الملفات: index.html, local.js, app.js, cfg.js, tpl.js, xl.js, jszip.min.js, sw.js, manifest.webmanifest, icon-192.png, icon-512.png
